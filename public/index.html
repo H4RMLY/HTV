@@ -20,9 +20,9 @@
         <div id="mainContainer">
 
             <div id="videoContainer">
-                <video autoplay muted controls class="video">
-                    <source id="videoSource" src="/assets/videos/Hayley Williams - Glum (Official Video).mp4" type="video/mp4">
-                </video>
+                <audio autoplay muted controls class="video" id="video">
+                    <source id="videoSource" src="/ConnectClientToStream" type="audio/flac">
+                </audio>
             </div>
             <div id="videoInformation">
                 <div id="videoTitle">Glum</div><div id="infoSpacer">//</div><div id="videoArtist">Hayley Williams</div>
@@ -36,8 +36,8 @@
 
 <!--TEMPLATES-->
 <template id="videoTemp">
-    <video controls class="video">
-        <source id="videoSource" src="PLACEHOLDER" type="video/mp4">
-    </video>
+    <audio controls autoplay class="video" id="">
+        <source id="videoSource" src="PLACEHOLDER" type="audio/mp3">
+    </audio>
 </template>
 

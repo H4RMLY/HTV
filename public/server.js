@@ -8,13 +8,14 @@ app.use(express.static(path.join(__dirname)));
 
 let globalFileList;
 const fileCache = [];
+const connectedWritables = [];
 
 function main(){
   InitialiseServer();
 }
 
 function GetFilePaths(){
-    const files = glob.sync('/mnt/TheMegaGasDrive/Music/**/*.flac', {});
+    const files = glob.sync('/mnt/TheMegaGasDrive/Music/**/*.mp3', {});
     return files;
 }
 
@@ -90,10 +91,47 @@ function GetNiceFilename(filePath){
   }
 }
 
+function CreateReadableStream(filePath){
+  const readable = fs.createReadStream(filePath); 
+  return readable
+}
+
+async function StartStream(readable){
+  
+}
+
+function CreateWriteableStream(){
+  const writeable = new WritableStream();
+  return writeable
+}
+
+function ConnectClientToStream(req, res){
+  console.log("creating new reader")
+  const readable = CreateReadableStream(fileCache[1].path);
+  //res.setHeader('Content-Type', 'audio/flac');
+  connectedWritables.push(res);
+
+  readable.pipe(connectedWritables[0]);
+  setTimeout(()=>{KillStream(readable)}, 10000)
+  //readable.unpipe(res);
+}
+
+function KillStream(stream){
+  stream.unpipe(connectedWritables[0]);
+  console.log("dead");
+}
+
+function PipeToAllWritables(chunk){
+  for (const connection of connectedWritables){
+    connection.write(chunk);
+  }
+}
+
 main();
 
 app.get('/NextFile', ShiftFilesForward);
 app.get('/PrevFile', ShiftFilesBackward);
 app.get('/ConnectToServer', ConnectToClient);
+app.get('/ConnectClientToStream', ConnectClientToStream);
 
 app.listen(8080);

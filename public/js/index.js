@@ -7,6 +7,7 @@ async function main(){
     SetButtonEvents();
     const firstFile = await ConnectToServer();
     SetFileInfo(firstFile);
+    ConnectToStream();
 }
 
 function GrabHTMLHandles(){
@@ -23,6 +24,17 @@ function SetButtonEvents(){
 
 function NextFileButtonEvent(){
     GetNextFile();
+    RefreshSource();
+}
+
+function RefreshSource(){
+    document.querySelector('#video').remove();
+    const template = document.querySelector('#videoTemp');
+    const newSource = template.content.cloneNode(true);
+    const sourceContainer = document.querySelector('#videoContainer');
+    newSource.querySelector('.video').setAttribute('id', 'video')
+    sourceContainer.appendChild(newSource);
+    ConnectToStream();
 }
 
 async function GetNextFile(){
@@ -54,6 +66,10 @@ async function ConnectToServer(){
         console.log("Connection to server successful!");
         return await firstFile
     }
+}
+
+async function ConnectToStream(){
+    document.querySelector('#videoSource').setAttribute('src', '/ConnectClientToStream');
 }
 
 function SetFileInfo(currentFile){
