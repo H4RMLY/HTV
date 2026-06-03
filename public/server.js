@@ -8,25 +8,22 @@ app.use(express.static(path.join(__dirname)));
 
 let globalFileList;
 const fileCache = [];
-const connectedWritables = [];
+const connectedClients = new Map(); // Track clients with unique IDs
 
 function main(){
   InitialiseServer();
 }
 
 function GetFilePaths(){
-    const files = glob.sync('/mnt/TheMegaGasDrive/Music/**/*.mp3', {});
+    const files = glob.sync('/mnt/TheMegaGasDrive/Music/**/*.flac', {});
     return files;
 }
 
 function ShuffleArray(array){
     let m = array.length, i, t;
 
-  // While there remain elements to shuffle…
   while (m) {
-    // Pick a remaining element…
     i = Math.floor(Math.random() * m--);
-    // And swap it with the current element.
     t = array[m];
     array[m] = array[i];
     array[i] = t;
@@ -87,7 +84,10 @@ function ConnectToClient(req, res){
 function GetNiceFilename(filePath){
   if (filePath != null){
     const splitString = filePath.split("/");
-    return splitString.pop();  
+    const filename = splitString.pop();
+    splitString.pop();
+    const artist = splitString.pop()
+    return {"filename": filename,"artist": artist};
   }
 }
 
@@ -96,41 +96,86 @@ function CreateReadableStream(filePath){
   return readable
 }
 
-async function StartStream(readable){
-  
-}
-
-function CreateWriteableStream(){
-  const writeable = new WritableStream();
-  return writeable
+function KillClientStream(clientId) {
+  const client = connectedClients.get(clientId);
+  if (client) {
+    if (client.readable && !client.readable.destroyed) {
+      client.readable.destroy();
+    }
+    if (client.response && !client.response.writableEnded) {
+      client.response.end();
+    }
+    connectedClients.delete(clientId);
+    console.log(`Stream killed for client ${clientId}`);
+  }
 }
 
 function ConnectClientToStream(req, res){
-  console.log("creating new reader")
-  const readable = CreateReadableStream(fileCache[1].path);
-  //res.setHeader('Content-Type', 'audio/flac');
-  connectedWritables.push(res);
+  const streamId = `stream-${Date.now()}-${Math.random()}`;
+  console.log(`Creating new stream for ${streamId}`);
+  
+  const filePath = fileCache[1].path;
+  const stream = CreateReadableStream(filePath);
+  
+  // Store client connection info
+  connectedClients.set(streamId, {
+    readable: stream,
+    response: res
+  });
 
-  readable.pipe(connectedWritables[0]);
-  setTimeout(()=>{KillStream(readable)}, 10000)
-  //readable.unpipe(res);
-}
+  res.setHeader('Content-Type', 'audio/mpeg');
 
-function KillStream(stream){
-  stream.unpipe(connectedWritables[0]);
-  console.log("dead");
-}
+  // Handle client disconnect or request abort
+  req.on('aborted', () => {
+    console.log(`Request aborted for ${streamId}`);
+    KillClientStream(streamId);
+  });
 
-function PipeToAllWritables(chunk){
-  for (const connection of connectedWritables){
-    connection.write(chunk);
-  }
+  res.on('close', () => {
+    console.log(`Client ${streamId} disconnected`);
+    KillClientStream(streamId);
+  });
+
+  res.on('error', (err) => {
+    console.error(`Error for client ${streamId}:`, err);
+    KillClientStream(streamId);
+  });
+
+  // Handle readable stream errors
+  stream.on('error', (err) => {
+    console.error(`Readable stream error for ${streamId}:`, err);
+    KillClientStream(streamId);
+  });
+
+  // Handle stream end
+  stream.on('end', () => {
+    console.log(`Stream ended for ${streamId}`);
+    res.end();
+    connectedClients.delete(streamId);
+  });
+
+  // Pipe the stream
+  stream.pipe(res);
 }
 
 main();
 
-app.get('/NextFile', ShiftFilesForward);
-app.get('/PrevFile', ShiftFilesBackward);
+app.get('/NextFile', (req, res) => {
+  ShiftFilesForward(req, res);
+  // Kill all active streams when user clicks next
+  connectedClients.forEach((client, clientId) => {
+    KillClientStream(clientId);
+  });
+});
+
+app.get('/PrevFile', (req, res) => {
+  ShiftFilesBackward(req, res);
+  // Kill all active streams when user clicks previous
+  connectedClients.forEach((client, clientId) => {
+    KillClientStream(clientId);
+  });
+});
+
 app.get('/ConnectToServer', ConnectToClient);
 app.get('/ConnectClientToStream', ConnectClientToStream);
 

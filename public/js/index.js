@@ -1,4 +1,5 @@
 const elements = {};
+let audioAbortControl = null; // Track abort controller for current stream
 
 window.addEventListener('load', main);
 
@@ -27,13 +28,26 @@ function NextFileButtonEvent(){
     RefreshSource();
 }
 
+function PrevFileButtonEvent(){
+    GetPrevFile();
+    RefreshSource();
+}
+
 function RefreshSource(){
+    // Abort the current stream if one is active
+    if (audioAbortControl) {
+        audioAbortControl.abort();
+        audioAbortControl = null;
+    }
+
+    // Remove and recreate the audio element
     document.querySelector('#video').remove();
     const template = document.querySelector('#videoTemp');
     const newSource = template.content.cloneNode(true);
     const sourceContainer = document.querySelector('#videoContainer');
     newSource.querySelector('.video').setAttribute('id', 'video')
     sourceContainer.appendChild(newSource);
+    
     ConnectToStream();
 }
 
@@ -44,10 +58,6 @@ async function GetNextFile(){
         console.log(nextFile);
         SetFileInfo(nextFile);
     }
-}
-
-function PrevFileButtonEvent(){
-    GetPrevFile();
 }
 
 async function GetPrevFile(){
@@ -69,9 +79,34 @@ async function ConnectToServer(){
 }
 
 async function ConnectToStream(){
-    document.querySelector('#videoSource').setAttribute('src', '/ConnectClientToStream');
+    // Create a new abort controller for this stream
+    audioAbortControl = new AbortController();
+    
+    // Create a unique URL with cache busting parameter
+    const timestamp = Date.now();
+    const src = `/ConnectClientToStream?t=${timestamp}`;
+    
+    document.querySelector('#videoSource').setAttribute('src', src);
+    const sourceElement = document.querySelector('#video');
+    
+    sourceElement.addEventListener('ended', AudioEndedEvent, { once: true });
+    sourceElement.addEventListener('error', AudioErrorEvent);
+
+    sourceElement.load(); // Force the browser to load the new source
+    sourceElement.play().catch(err => console.error("Audio playback error:", err));
+}
+
+function AudioEndedEvent(){
+    console.log("Audio ended, moving to next file");
+    NextFileButtonEvent();
+}
+
+function AudioErrorEvent(){
+    console.error("Audio playback error, playing next");
+    NextFileButtonEvent();
 }
 
 function SetFileInfo(currentFile){
-    elements.fileTitle.textContent = currentFile;
+    elements.fileTitle.textContent = currentFile.filename;
+    elements.fileArtist.textContent = currentFile.artist;
 }
