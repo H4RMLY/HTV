@@ -21,7 +21,7 @@ body{
 	justify-content: space-between;
 }
 
-#menu_button{
+#menuButton{
 	order: 1;
   	align-self: center;
   	margin: 0 0 0 1rem;
@@ -35,13 +35,13 @@ body{
   	color: white;
 }
 
-#logo_main{
+#logoMain{
 	order: 2;
 	height: 4rem;
 	align-self: center;
 }
 
-#login_button{
+#loginButton{
 	order: 3;
 	font-weight: bold;
 	border-radius: 1rem;
@@ -56,30 +56,30 @@ body{
 	color: white;
 }
 
-#content_container{
+#contentContainer{
 	display: flex;
 	justify-content: space-around;
 }
 
-#next_vid{
+#nextVid{
 	color: var(--grey);
 	font-size: 10rem;
 	align-self: center;
 }
 
-#prev_vid{
+#prevVid{
 	color: var(--grey);
 	font-size: 10rem;
 	align-self: center;
 }
 
-#main_container{
+#mainContainer{
 	display: flex;
 	justify-content: center;
 	flex-direction: column;
 }
 
-#video_container{
+#videoContainer{
 	border: solid #262e2c;
 	border-radius: 1rem;
 	align-self: center;
@@ -89,7 +89,7 @@ body{
 	justify-content: center;
 }
 
-#video_container > video{
+#videoContainer > video{
 	height:inherit;
 	width: inherit;
 	align-self: center;
@@ -97,7 +97,7 @@ body{
 	box-shadow: var(--black) 0rem 0rem 10px 0.5rem;
 }
 
-#video_information{
+#videoInformation{
 	margin:0.5rem;
 	display: flex;
 	width: 75vw;
@@ -108,16 +108,16 @@ body{
 	
 }
 
-#video_title{
+#videoTitle{
 	color: var(--yellow);
 	margin-right: 0.5rem;
 }
 
-#info_spacer{
+#infoSpacer{
 	color: var(--red);
 }
 
-#video_artist{
+#videoArtist{
 	margin-left: 0.5rem;
 	color: var(--yellow);
 }

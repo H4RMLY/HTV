@@ -7,6 +7,11 @@ const app = express();
 app.use(express.static(path.join(__dirname)));
 
 let globalFileList;
+const fileCache = [];
+
+function main(){
+  InitialiseServer();
+}
 
 function GetFilePaths(){
     const files = glob.sync('/mnt/TheMegaGasDrive/Music/**/*.flac', {});
@@ -29,12 +34,66 @@ function ShuffleArray(array){
   return array;
 }
 
-function main(){
-    globalFileList = GetFilePaths();
-    globalFileList = ShuffleArray(globalFileList)
-    console.log(globalFileList[0]);
+function InitialiseServer(){
+  globalFileList = ShuffleArray(GetFilePaths())
+  StartFromBeginning();
+    
+  for (const item of fileCache){
+    console.log("[ITEM "+ item.index +"]: " + item.path);
+  }
+}
+
+function StartFromBeginning(){
+  fileCache.push({"path": null, "index": null}); 
+  fileCache.push({"path": globalFileList[0], "index": 0});
+  fileCache.push({"path": globalFileList[1], "index": 1});
+}
+
+function ShiftFilesForward(req, res){
+  fileCache[0] = fileCache[1];
+  fileCache[1] = fileCache[2];
+  fileCache[2] = GetNextFile(fileCache[2]);
+  
+  res.json(GetNiceFilename(fileCache[1].path));
+}
+
+function GetNextFile(currentFile){
+  const currentIndex = currentFile.index;
+  const nextIndex = currentIndex + 1;
+  const nextFile = globalFileList[nextIndex];
+  return nextFile == undefined ? {"path": null, "index": null} : {"path": nextFile, "index": nextIndex};
+}
+
+function ShiftFilesBackward(req, res){
+  fileCache[2] = fileCache[1];
+  fileCache[1] = fileCache[0];
+  fileCache[0] = GetPrevFile(fileCache[0]);
+
+  res.json(GetNiceFilename(fileCache[1].path));
+}
+
+function GetPrevFile(currentFile){
+  const currentIndex = currentFile.index;
+  const prevIndex = currentIndex - 1;
+  const prevFile = globalFileList[prevIndex];
+  return prevFile == undefined ? {"path": null, "index": null} : {"path": prevFile, "index": prevIndex};
+}
+
+function ConnectToClient(req, res){
+  res.json(GetNiceFilename(fileCache[1].path));
+}
+
+function GetNiceFilename(filePath){
+  if (filePath != null){
+    const splitString = filePath.split("/");
+    return splitString.pop();  
+  }
 }
 
 main();
+
+app.get('/NextFile', ShiftFilesForward);
+app.get('/PrevFile', ShiftFilesBackward);
+app.get('/ConnectToServer', ConnectToClient);
 
 app.listen(8080);
