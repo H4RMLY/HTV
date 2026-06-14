@@ -1,19 +1,23 @@
-import glob 
+import glob, os, sys 
 import musicbrainzngs as mb
 from time import sleep
-import os
-
-rootDir = '/media/harmly/158a5553-2d82-4bd9-9472-fc1cbf45e4b3/fileRenameTesting'
 
 def GetAllFiles():
     files = glob.glob(rootDir + '/**/*.flac', recursive=True)
     return files
 
+def GetAllDirectories():
+    dirs = glob.glob(rootDir + '/**/', recursive=True)
+    return dirs
+
 def GetMBLookupTerms(filePath):
     splitString = filePath.split('/')
-    artistName = splitString[5]
-    albumName = splitString[6]
+    artistName = splitString[-3]
+    albumName = splitString[-2]
     return artistName, albumName
+
+def IsValidDir(directory):
+    return False if directory.count('/') != 6 else True
 
 def MBLookup(artistName):
     mb.set_useragent("HTV", "1.0", "h4rmly@proton.me")
@@ -25,35 +29,81 @@ def MBLookup(artistName):
 
 def FindAlbumName(albums, rawAlbumName):
     for album in albums:
-        if album['title'] in rawAlbumName:
+        if album['title'] in rawAlbumName: # finding first match, doesnt work for Arist - Album when artist has selftitled
             return album['title']
 
 def RenameDirectory(oldDirPath, newDirName):
     splitDir = oldDirPath.split('/')
-    if splitDir[-1] == newDirName:
-        return 'Dir already has that name'
+    if splitDir[-2] == newDirName:
+        return 'Directory already has that name'
+    elif newDirName is None:
+        return 'Given name is none (MB search may have failed), skipping'
     else:
-        splitDir[-1] = newDirName 
+        print("New Dir Name: " + newDirName)
+        splitDir[-2] = newDirName 
         newDirPath = '/'.join(splitDir)
                 
         try:
-            os.rename(oldDirPath, newDirPath)
-            return 'Dir has been renamed'
+    #        os.rename(oldDirPath, newDirPath)
+            print(newDirPath)
+            return 'Directory has been renamed'
         except FileNotFoundError:
-            return 'Dir not found'
-
-files = GetAllFiles()
+            return 'Directory not found'
 
 # Looking up the artist for every file is lowkey insane and I NEED to change this
 # 1 Sec wait at the end of every iteration may be needed to keep under MB lookup limit. ANNOYING
 
-print("===RENAME STARTING===")
-for i in range(len(files)):
-    artistName, rawAlbumName = GetMBLookupTerms(files[i])
-    albums = MBLookup(artistName)
-    albumName = FindAlbumName(albums, rawAlbumName)
-    pathsAndFiles = os.path.split(files[i])
-    print(RenameDirectory(pathsAndFiles[0], albumName))
-    #sleep(1)
+def RenameAllDirs():
+    dirs = GetAllDirectories()
+    print("===RENAME STARTING===")
+    for i in range(len(dirs)):
+        if IsValidDir(dirs[i]) == False:
+            print("Skipping directory, too shallow")
+            continue
+        else:
+            artistName, rawAlbumName = GetMBLookupTerms(dirs[i])
+            albums = MBLookup(artistName)
+            albumName = FindAlbumName(albums, rawAlbumName)
+            print(RenameDirectory(dirs[i], albumName))
+            sleep(1)
+    print("========DONE=========")
+        
 
-print("========DONE=========")
+def RenameAllFiles():
+    print(GetAllFiles())
+
+def ShowCommandOptions():
+    print("Automatically rename the directories or music files.\n" \
+    "Directories will be renamed to the album and files will be renamed to the respecitve song name\n")
+    print("Usage: renameFiles.py [options]")
+    print(" Options:\n" \
+            "         -h, --help                Show help menu\n" \
+            "         -d, --directory-rename    Rename all directories in the given root directory\n" \
+            "         -f, --file-rename         Rename all files inside the given root directory and sub-directories")
+    
+if len(sys.argv) < 2:
+    print("ERROR: No arguments provided")
+    ShowCommandOptions()
+
+elif sys.argv[1] == "-d" or sys.argv[1] == "--directory-rename":
+    try: 
+        rootDir = sys.argv[2]
+        print("Renaming directories from root: [" + rootDir + "]")
+        RenameAllDirs()
+    except IndexError:
+        print("ERROR: No root directory provided")
+
+elif sys.argv[1] == "-f" or sys.argv[1] == "--file-rename":
+    try: 
+        rootDir = sys.argv[2]
+        print("Renaming files from root: [" + rootDir + "]")
+        RenameAllFiles()
+    except IndexError:
+        print("ERROR: No root directory provided")
+
+elif sys.argv[1] == "-h" or sys.argv[1] == "--help":
+    ShowCommandOptions()
+
+else:
+    print("ERROR: Invalid argument")
+    ShowCommandOptions()
